@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDR Compensation & MBO Addendum - Chelsea Rosebrook</title>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Inter', system-ui, sans-serif; font-size: 11pt; line-height: 1.5; color: #3d3d3d; background: #d1d5db; }
+:root { --gunmetal:#323232; --gold:#e1b753; --gold-accent:#c39546; --night:#313144; --steel:#3d3d3d; --light:#F9F9F9; --secondary:#EAEAEA; --cobalt:#666680; --black:#000000; --white:#FFFFFF; }
+
+/* === AUTH OVERLAY === */
+#authOverlay { position:fixed; inset:0; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.auth-card { background:#fff; border-radius:12px; padding:48px 40px; max-width:420px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4); }
+.auth-logo { width:56px; height:56px; background:var(--gunmetal); border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; }
+.auth-logo svg { fill:var(--gold); width:32px; height:32px; }
+.auth-card h2 { font-family:'Lora',serif; font-size:18pt; color:var(--black); margin-bottom:6px; }
+.auth-card .auth-sub { font-size:10pt; color:var(--cobalt); margin-bottom:28px; line-height:1.5; }
+.ms-btn { display:inline-flex; align-items:center; gap:10px; background:#0078d4; color:#fff; border:none; padding:12px 24px; border-radius:6px; font-family:'Inter',sans-serif; font-size:11pt; font-weight:600; cursor:pointer; width:100%; justify-content:center; transition:background 0.15s; }
+.ms-btn:hover { background:#006ab8; }
+.auth-error { margin-top:14px; color:#dc3545; font-size:9.5pt; display:none; }
+.auth-note { margin-top:20px; font-size:8.5pt; color:#aaa; }
+
+/* === ROLE SELECT OVERLAY === */
+#roleOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); display:none; align-items:center; justify-content:center; z-index:9998; backdrop-filter:blur(4px); }
+#roleOverlay.show { display:flex; }
+.role-card { background:#fff; border-radius:10px; padding:36px 32px; max-width:460px; width:92%; box-shadow:0 16px 48px rgba(0,0,0,0.3); }
+.role-card h2 { font-family:'Lora',serif; font-size:15pt; color:var(--black); margin-bottom:4px; }
+.role-card .rc-user { font-size:10pt; color:var(--cobalt); margin-bottom:20px; }
+.role-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+.role-btn { border:2px solid var(--secondary); background:#fff; border-radius:6px; padding:14px 12px; cursor:pointer; text-align:left; transition:all 0.15s; }
+.role-btn:hover { border-color:var(--gold-accent); background:#fdf8ec; }
+.role-btn.selected { border-color:var(--gold-accent); background:#fdf8ec; }
+.role-btn .rb-title { font-weight:700; font-size:10.5pt; color:var(--black); }
+.role-btn .rb-desc { font-size:8.5pt; color:var(--cobalt); margin-top:2px; }
+.role-confirm { background:var(--gunmetal); color:#fff; border:none; padding:10px 28px; border-radius:5px; font-family:'Inter',sans-serif; font-size:11pt; font-weight:700; cursor:pointer; width:100%; }
+.role-confirm:hover { background:var(--night); }
+.role-confirm:disabled { opacity:0.4; cursor:default; }
+
+/* === SETUP GUIDE === */
+#setupGuide { padding:20px; max-width:960px; margin:0 auto; display:none; }
+.setup-card { background:#fff; border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.1); padding:28px 32px; margin-bottom:20px; }
+.setup-card h2 { font-family:'Lora',serif; font-size:15pt; border-bottom:2px solid var(--gold); padding-bottom:8px; margin-bottom:16px; color:var(--black); }
+.setup-card h3 { font-size:12pt; font-weight:700; color:var(--night); margin:16px 0 6px; }
+.step { display:flex; gap:14px; margin-bottom:14px; align-items:flex-start; }
+.step-num { width:28px; height:28px; border-radius:50%; background:var(--gunmetal); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10pt; flex-shrink:0; margin-top:1px; }
+.step-body p { font-size:10.5pt; color:var(--steel); line-height:1.6; margin-bottom:4px; }
+.warning-box { background:#fff3cd; border:1px solid #ffc107; border-radius:4px; padding:10px 14px; font-size:10pt; margin:10px 0; color:var(--steel); }
+.config-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.cfg-field label { display:block; font-size:9pt; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px; }
+.cfg-field input { width:100%; border:1.5px solid var(--secondary); border-radius:4px; padding:8px 10px; font-family:'Courier New',monospace; font-size:10pt; outline:none; }
+.cfg-field input:focus { border-color:var(--gold-accent); }
+.cfg-apply { background:var(--gold); color:var(--black); border:none; padding:10px 28px; border-radius:5px; font-family:'Inter',sans-serif; font-size:11pt; font-weight:700; cursor:pointer; margin-top:8px; }
+.cfg-apply:hover { background:var(--gold-accent); }
+.cfg-status { font-size:9.5pt; color:#28a745; margin-top:10px; display:none; line-height:1.6; }
+
+/* === TOP NAV === */
+.top-nav { position:sticky; top:0; z-index:1000; background:var(--gunmetal); color:#f1f5f9; padding:10px 20px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 12px rgba(0,0,0,0.3); flex-wrap:wrap; gap:8px; }
+.top-nav .doc-title { font-family:'Lora',serif; font-size:13pt; font-weight:700; }
+.top-nav .doc-subtitle { font-size:9pt; opacity:0.7; margin-top:2px; }
+.nav-left { display:flex; flex-direction:column; }
+.nav-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.nav-tabs { display:flex; gap:4px; flex-wrap:wrap; }
+.nav-tab { background:rgba(255,255,255,0.1); color:#f1f5f9; border:none; padding:6px 14px; border-radius:4px; font-family:'Inter',sans-serif; font-size:10pt; font-weight:500; cursor:pointer; transition:background 0.15s; }
+.nav-tab:hover { background:rgba(255,255,255,0.2); }
+.nav-tab.active { background:var(--gold); color:var(--black); font-weight:600; }
+.user-pill { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.12); border-radius:20px; padding:4px 12px 4px 8px; font-size:9pt; }
+.user-avatar { width:24px; height:24px; border-radius:50%; background:var(--gold); color:var(--black); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:9pt; flex-shrink:0; }
+.user-role-label { opacity:0.7; font-size:8pt; }
+.logout-btn { background:none; border:1px solid rgba(255,255,255,0.3); color:#f1f5f9; padding:3px 10px; border-radius:3px; font-size:8.5pt; cursor:pointer; }
+.logout-btn:hover { background:rgba(255,255,255,0.1); }
+.save-indicator { font-size:8.5pt; color:var(--gold); min-width:120px; text-align:right; }
+.read-only-badge { display:inline-block; font-size:8pt; font-weight:700; color:#856404; background:#fff3cd; border:1px solid #ffc107; border-radius:3px; padding:1px 8px; margin-left:6px; }
+
+/* === MAIN SECTIONS === */
+.section { display:none; padding:20px; max-width:960px; margin:0 auto; }
+.section.active { display:block; }
+.card { background:var(--white); border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.1); padding:28px 32px; margin-bottom:20px; }
+.title-block { text-align:center; margin-bottom:20px; }
+.title-block .gold-rule { width:50px; height:3px; background:var(--gold); margin:0 auto 10px; border-radius:2px; }
+.title-block .doc-type { font-family:'Lora',serif; font-size:16pt; font-weight:700; color:var(--black); }
+.title-block .role-line { font-size:10.5pt; color:var(--cobalt); margin-top:4px; text-transform:uppercase; letter-spacing:0.04em; }
+h2 { font-family:'Lora',serif; font-size:13pt; font-weight:700; color:var(--black); margin:18px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--secondary); }
+h3 { font-family:'Inter',sans-serif; font-size:12pt; font-weight:600; color:var(--night); margin:14px 0 6px; }
+h4 { font-family:'Inter',sans-serif; font-size:10.5pt; font-weight:600; color:var(--cobalt); margin:10px 0 5px; text-transform:uppercase; letter-spacing:0.03em; }
+p, li { font-size:11pt; line-height:1.6; margin-bottom:4px; color:var(--steel); }
+ul { margin-left:20px; margin-bottom:8px; }
+li { margin-bottom:4px; }
+strong { color:var(--black); }
+table { width:100%; border-collapse:collapse; margin:8px 0; font-size:10.5pt; }
+th { background:var(--light); color:var(--black); padding:8px 12px; text-align:left; font-weight:600; font-size:10pt; text-transform:uppercase; letter-spacing:0.04em; border-bottom:2px solid var(--secondary); }
+td { padding:8px 12px; border-bottom:1px solid var(--secondary); }
+.info-table td:first-child { width:200px; font-weight:600; color:var(--black); }
+.commission-table { border:2px solid var(--gunmetal); margin:12px 0; border-radius:4px; overflow:hidden; }
+.commission-table th { background:var(--gunmetal); color:var(--white); border-bottom:none; }
+.commission-table td { font-size:11pt; }
+.commission-table tr:last-child td { border-bottom:none; }
+.month-header { display:flex; align-items:center; gap:12px; margin:16px 0 10px; }
+.month-badge { display:inline-block; font-size:9pt; font-weight:600; color:var(--gold-accent); background:#fdf8ec; border:1px solid var(--gold); border-radius:3px; padding:3px 12px; }
+.week-block { margin-bottom:16px; border:1px solid var(--secondary); border-radius:5px; overflow:visible; }
+.week-title { font-size:11pt; font-weight:600; color:var(--night); padding:8px 14px; background:var(--light); border-bottom:1px solid var(--secondary); border-radius:5px 5px 0 0; }
+.col-head { display:grid; grid-template-columns:100px 1fr 36px; gap:8px; padding:6px 14px; background:var(--light); border-bottom:1px solid var(--secondary); }
+.col-head span { font-size:9pt; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; }
+.col-head .status-heads { display:flex; }
+.col-head .sh { width:33px; text-align:center; font-size:9pt; font-weight:700; color:var(--cobalt); }
+.tracker-row-wrap { border-bottom:1px solid var(--secondary); position:relative; }
+.tracker-row-wrap:last-child { border-bottom:none; }
+.tracker-row { display:grid; grid-template-columns:100px 1fr 36px; align-items:center; padding:7px 14px; gap:8px; }
+.tracker-row:hover { background:#fafafa; }
+.status-btns { display:flex; }
+.status-btn { width:33px; height:28px; border:1.5px solid var(--secondary); background:var(--white); font-family:'Inter',sans-serif; font-size:9.5pt; font-weight:700; cursor:pointer; transition:all 0.12s; color:var(--cobalt); }
+.status-btn:first-child { border-radius:4px 0 0 4px; }
+.status-btn:last-child { border-radius:0 4px 4px 0; }
+.status-btn:not(:first-child) { border-left:none; }
+.status-btn:hover:not(:disabled) { background:var(--light); color:var(--night); }
+.status-btn:disabled { opacity:0.4; cursor:default; }
+.status-btn.active-C { background:#d4edda; border-color:#28a745; color:#155724; }
+.status-btn.active-I { background:#fff3cd; border-color:#ffc107; color:#856404; }
+.status-btn.active-B { background:#f8d7da; border-color:#dc3545; color:#721c24; }
+.task-label { font-size:10.5pt; color:var(--steel); line-height:1.4; }
+.comment-icon { width:28px; height:28px; border-radius:4px; border:1.5px solid var(--secondary); background:var(--white); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--cobalt); transition:all 0.12s; flex-shrink:0; }
+.comment-icon:hover { background:var(--light); border-color:var(--cobalt); }
+.comment-icon.has-comment { border-color:var(--gold-accent); background:#fdf8ec; color:var(--gold-accent); }
+.comment-box { display:none; padding:8px 14px 10px; background:#fafafa; border-top:1px solid var(--secondary); }
+.comment-box.open { display:block; }
+.comment-box textarea { width:100%; border:1px solid var(--secondary); border-radius:3px; padding:6px 8px; font-family:'Inter',sans-serif; font-size:10pt; color:var(--steel); resize:vertical; min-height:52px; background:var(--white); outline:none; }
+.comment-box textarea:focus { border-color:var(--cobalt); }
+.comment-box textarea:disabled { background:#f5f5f5; cursor:default; }
+.review-bar { background:var(--light); border-left:3px solid var(--gold); margin:12px 0; border-radius:0 4px 4px 0; overflow:hidden; }
+.review-bar-header { padding:10px 16px; font-size:10.5pt; font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.review-pct-badge { font-size:10.5pt; font-weight:700; color:var(--night); background:var(--white); border:1.5px solid var(--secondary); border-radius:4px; padding:3px 12px; white-space:nowrap; }
+.review-fields-row { padding:0 16px 12px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; }
+.review-field { display:flex; flex-direction:column; gap:3px; }
+.review-field label { font-size:9pt; font-weight:600; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; }
+.review-field input[type="text"], .review-field input[type="date"] { border:none; border-bottom:1px solid var(--gunmetal); padding:3px 0; font-family:'Inter',sans-serif; font-size:10.5pt; color:var(--black); background:transparent; width:150px; outline:none; }
+.review-field input:disabled { opacity:0.5; cursor:default; }
+.review-field input[type="date"]::-webkit-calendar-picker-indicator { cursor:pointer; opacity:0.6; }
+.attained-field { display:flex; flex-direction:column; gap:3px; }
+.attained-field label { font-size:9pt; font-weight:600; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; }
+.attained-input-wrap { display:flex; align-items:center; gap:4px; }
+.attained-input { border:1.5px solid var(--gunmetal); border-radius:4px; padding:4px 8px; font-family:'Inter',sans-serif; font-size:11pt; font-weight:700; color:var(--night); background:var(--white); width:70px; outline:none; text-align:center; }
+.attained-input:focus { border-color:var(--gold-accent); }
+.attained-input:disabled { opacity:0.5; cursor:default; }
+.attained-pct-label { font-size:11pt; font-weight:700; color:var(--cobalt); }
+.attained-note { font-size:8.5pt; color:var(--cobalt); font-style:italic; margin-top:2px; }
+.review-comment-toggle { display:flex; align-items:center; gap:8px; padding:8px 16px; border-top:1px solid var(--secondary); cursor:pointer; font-size:9.5pt; color:var(--cobalt); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; user-select:none; }
+.review-comment-toggle:hover { background:#f0f0f0; color:var(--night); }
+.review-comment-toggle .arrow { font-size:10px; transition:transform 0.2s; display:inline-block; }
+.review-comment-toggle.open .arrow { transform:rotate(90deg); }
+.review-comment-panel { display:none; padding:12px 16px 14px; border-top:1px solid var(--secondary); background:var(--white); }
+.review-comment-panel.open { display:block; }
+.rc-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.rc-toolbar label { font-size:9pt; font-weight:600; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap; }
+.rc-toolbar select { border:1px solid var(--secondary); border-radius:3px; padding:4px 8px; font-family:'Inter',sans-serif; font-size:10pt; color:var(--black); background:var(--white); outline:none; cursor:pointer; }
+.rc-date-display { border:1px solid var(--secondary); border-radius:3px; padding:4px 8px; font-family:'Inter',sans-serif; font-size:10pt; color:var(--cobalt); background:#f5f5f5; width:180px; }
+.rc-add-btn { background:var(--gunmetal); color:var(--white); border:none; padding:5px 14px; border-radius:3px; font-family:'Inter',sans-serif; font-size:9.5pt; font-weight:600; cursor:pointer; }
+.rc-add-btn:hover:not(:disabled) { background:var(--night); }
+.rc-add-btn:disabled { opacity:0.4; cursor:default; }
+.rc-entries { display:flex; flex-direction:column; gap:8px; }
+.rc-entry { border:1px solid var(--secondary); border-radius:4px; padding:8px 10px; background:var(--light); }
+.rc-entry-meta { display:flex; align-items:center; gap:10px; margin-bottom:5px; flex-wrap:wrap; }
+.rc-entry-author { font-size:9pt; font-weight:700; border-radius:3px; padding:2px 8px; }
+.rc-entry-author.manager { background:#dde3f0; color:#2a3a6b; }
+.rc-entry-author.employee { background:#d4edda; color:#155724; }
+.rc-entry-date { font-size:9pt; color:var(--cobalt); }
+.rc-entry-text { font-size:10.5pt; color:var(--steel); line-height:1.5; white-space:pre-wrap; }
+.rc-entry-delete { margin-left:auto; background:none; border:none; cursor:pointer; color:#ccc; font-size:12px; padding:2px 4px; border-radius:2px; }
+.rc-entry-delete:hover { color:#dc3545; background:#f8d7da; }
+.ack-section { padding:14px 16px 16px; border-top:1px solid var(--secondary); background:#fafdf8; }
+.ack-section-title { font-size:10pt; font-weight:700; color:var(--night); margin-bottom:4px; }
+.ack-section-note { font-size:8.5pt; color:var(--cobalt); font-style:italic; margin-bottom:14px; background:#fffdf0; border:1px dashed var(--gold); border-radius:3px; padding:5px 10px; display:inline-block; }
+.ack-sig-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; flex-wrap:wrap; }
+.ack-sig-col { display:flex; flex-direction:column; gap:6px; }
+.ack-sig-col > .col-label { font-size:9pt; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px; }
+.ack-name-display { font-size:10.5pt; font-weight:600; color:var(--night); }
+.ack-btn { border:1.5px solid var(--gunmetal); background:var(--white); padding:5px 14px; border-radius:3px; font-family:'Inter',sans-serif; font-size:9.5pt; font-weight:600; cursor:pointer; color:var(--gunmetal); margin-top:2px; width:fit-content; transition:all 0.12s; }
+.ack-btn:hover:not(:disabled) { background:var(--light); }
+.ack-btn.acknowledged { background:#d4edda; border-color:#28a745; color:#155724; cursor:default; }
+.ack-btn:disabled:not(.acknowledged) { opacity:0.4; cursor:default; }
+.ack-stamp { font-size:8.5pt; color:var(--cobalt); font-style:italic; min-height:14px; margin-top:2px; }
+.ack-clear { font-size:8.5pt; color:#aaa; cursor:pointer; text-decoration:underline; margin-top:2px; display:none; }
+.ack-clear:hover { color:#dc3545; }
+.rev-sig-block { margin-top:10px; }
+.rev-sig-row { display:flex; align-items:flex-end; gap:8px; margin-bottom:6px; }
+.rev-sig-label { font-size:9.5pt; font-weight:600; color:var(--black); white-space:nowrap; width:76px; flex-shrink:0; }
+.rev-sig-input { border:none; border-bottom:1.5px solid var(--gunmetal); flex:1; max-width:280px; height:22px; font-family:'Inter',sans-serif; font-size:10pt; background:transparent; outline:none; color:var(--black); }
+.rev-sig-input:disabled { opacity:0.5; cursor:default; }
+.rev-sig-input.e-acked { font-style:italic; color:var(--cobalt); }
+.progress-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:16px 0; }
+.prog-card { background:var(--white); border:1px solid var(--secondary); border-radius:5px; padding:14px 16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+.prog-card .month-label { font-size:9pt; font-weight:600; color:var(--cobalt); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+.prog-bar-bg { background:var(--secondary); border-radius:10px; height:10px; margin:6px 0; overflow:hidden; }
+.prog-bar-fill { height:100%; border-radius:10px; background:var(--gold); transition:width 0.3s; }
+.prog-pct { font-size:13pt; font-weight:700; color:var(--black); }
+.prog-count { font-size:9pt; color:var(--cobalt); margin-top:2px; }
+.transition-box { margin-top:16px; padding:14px 16px; background:var(--light); border:1px solid var(--secondary); border-left:3px solid var(--gold); border-radius:3px; font-size:10.5pt; }
+.sig-block { margin-top:16px; }
+.sig-row { display:flex; align-items:flex-end; gap:10px; margin-bottom:10px; }
+.sig-label { font-size:11pt; font-weight:600; color:var(--black); white-space:nowrap; width:130px; flex-shrink:0; }
+.sig-line { border:none; border-bottom:1px solid var(--gunmetal); width:300px; flex-shrink:0; height:24px; font-family:'Inter',sans-serif; font-size:11pt; background:transparent; outline:none; color:var(--black); }
+.sig-line:disabled { opacity:0.5; cursor:default; }
+.sig-hint { font-size:9pt; color:var(--cobalt); margin-left:140px; margin-bottom:8px; }
+.save-bar { background:var(--gunmetal); color:#f1f5f9; padding:10px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.save-bar span { font-size:9.5pt; opacity:0.8; }
+.btn { border:none; padding:8px 22px; border-radius:4px; font-family:'Inter',sans-serif; font-size:10.5pt; font-weight:700; cursor:pointer; }
+.btn-gold { background:var(--gold); color:var(--black); }
+.btn-gold:hover { background:var(--gold-accent); }
+.btn-outline { background:transparent; color:#f1f5f9; border:1.5px solid rgba(255,255,255,0.4); }
+.btn-outline:hover { background:rgba(255,255,255,0.1); }
+@media (max-width:600px) { .ack-sig-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ===== AUTH OVERLAY ===== -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="none"/></svg>
+    </div>
+    <h2>Armor Onboarding</h2>
+    <p class="auth-sub">BDR Compensation &amp; MBO Addendum<br>Chelsea Rosebrook &mdash; March 9 to May 2026</p>
+    <button class="ms-btn" onclick="doLogin()">
+      <svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <div class="auth-error" id="authErr"></div>
+    <div class="auth-note">Use your Armor Microsoft 365 account. No new password required.</div>
+  </div>
+</div>
+
+<!-- ===== ROLE SELECT OVERLAY ===== -->
+<div id="roleOverlay">
+  <div class="role-card">
+    <h2>Select Your Role</h2>
+    <p class="rc-user" id="roleUserLine">Signed in as: </p>
+    <div class="role-grid" id="roleGrid"></div>
+    <button class="role-confirm" id="roleConfirmBtn" disabled onclick="confirmRole()">Continue</button>
+  </div>
+</div>
+
+<!-- ===== SETUP GUIDE ===== -->
+<div id="setupGuide">
+  <div class="setup-card">
+    <h2>One-Time Setup Guide</h2>
+    <p>Complete the four steps below to connect this document to SharePoint for persistent, shared storage. This only needs to be done once by the hiring manager. Estimated time: 10 to 15 minutes.</p>
+
+    <h3>Step 1: Register an App in Azure AD</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><p>Go to <strong>portal.azure.com</strong> and sign in with your admin account (or have your IT admin do this). Navigate to <strong>Azure Active Directory &gt; App registrations &gt; + New registration</strong>.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><p>Enter these settings: Name = <strong>Armor Onboarding Tracker</strong>. Supported account types = <strong>Accounts in this organizational directory only</strong>. Redirect URI type = <strong>Single-page application (SPA)</strong>. Redirect URI value = the full SharePoint URL of this file (you can add this after uploading the file). Click <strong>Register</strong>.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><p>On the app overview page, copy the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong>. You will paste them into the fields below.</p></div></div>
+
+    <h3>Step 2: Grant API Permissions</h3>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><p>In the left sidebar of your app registration, click <strong>API permissions &gt; + Add a permission &gt; Microsoft Graph &gt; Delegated permissions</strong>. Search for and add <strong>Files.ReadWrite</strong> and <strong>Sites.Read.All</strong>. Then click <strong>Grant admin consent</strong>.</p></div></div>
+
+    <h3>Step 3: Prepare SharePoint</h3>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><p>Upload this HTML file to a SharePoint document library (example: Shared Documents in your HR site). Note the full site URL such as <strong>https://contoso.sharepoint.com/sites/HR</strong>. The state file will be saved automatically as <strong>CRosebrook-Onboarding-State.json</strong> in that same library.</p></div></div>
+    <div class="warning-box">Ensure all intended users (Manager, Employee, HR, CFO, Payroll) have at least <strong>Read</strong> access to the library. The Manager and Employee accounts need <strong>Edit</strong> access.</div>
+
+    <h3>Step 4: Enter Your Configuration</h3>
+    <p style="margin-bottom:12px;">Fill in the four fields below and click <strong>Apply &amp; Download</strong>. This generates an updated copy of the file with your values saved inside it. Upload that file to SharePoint to replace this one.</p>
+    <div class="config-fields">
+      <div class="cfg-field"><label>Azure Client ID</label><input type="text" id="cfg-clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+      <div class="cfg-field"><label>Azure Tenant ID</label><input type="text" id="cfg-tenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+      <div class="cfg-field" style="grid-column:1/-1;"><label>SharePoint Site URL</label><input type="text" id="cfg-siteUrl" placeholder="https://contoso.sharepoint.com/sites/HR"></div>
+      <div class="cfg-field" style="grid-column:1/-1;"><label>Redirect URI (this file's full SharePoint URL)</label><input type="text" id="cfg-redirectUri" placeholder="https://contoso.sharepoint.com/sites/HR/Shared%20Documents/CRosebrook-Onboarding.html"></div>
+    </div>
+    <button class="cfg-apply" onclick="applyConfig()">Apply &amp; Download Updated File</button>
+    <div class="cfg-status" id="cfgStatus"></div>
+  </div>
+</div>
+
+<!-- ===== TOP NAV ===== -->
+<div class="top-nav" id="topNav" style="display:none;">
+  <div class="nav-left">
+    <div class="doc-title">BDR Compensation &amp; MBO Addendum</div>
+    <div class="doc-subtitle">Chelsea Rosebrook | March 9 - May 2026</div>
+  </div>
+  <div class="nav-right">
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showSection('overview',this)">Overview</button>
+      <button class="nav-tab" onclick="showSection('mbos',this)">MBOs</button>
+      <button class="nav-tab" onclick="showSection('tracker',this)">Ramp Tracker</button>
+      <button class="nav-tab" onclick="showSection('signatures',this)">Signatures</button>
+    </div>
+    <div class="user-pill" id="userPill">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div><div id="userName" style="font-weight:600;font-size:9pt;"></div><div class="user-role-label" id="userRoleLabel"></div></div>
+    </div>
+    <span class="save-indicator" id="saveIndicator"></span>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div id="mainContent" style="display:none;">
+
+<!-- OVERVIEW -->
+<div id="section-overview" class="section active">
+  <div class="card">
+    <div class="title-block">
+      <div class="gold-rule"></div>
+      <div class="doc-type">Compensation and Management by Objectives (MBO) Addendum</div>
+      <div class="role-line">Business Development Representative &mdash; Addendum to Offer Letter</div>
+    </div>
+    <p>This Compensation and MBO Addendum supplements the Business Development Representative Compensation Plan and Offer Letter, and outlines the temporary commission offset and Management by Objectives applicable during the BDR ramp period.</p>
+    <h2>1. Employee Information</h2>
+    <table class="info-table">
+      <tr><td>Employee Name</td><td>Chelsea Rosebrook</td></tr>
+      <tr><td>Position</td><td>Business Development Representative</td></tr>
+      <tr><td>Reports To (Manager)</td><td>Chris Murphy, Director of Sales</td></tr>
+      <tr><td>Expected Start Date</td><td>March 9, 2026</td></tr>
+      <tr><td>Ramp Period</td><td>March 9, 2026 through May 31, 2026 (3 months)</td></tr>
+    </table>
+    <h2>2. Effective Date and Term</h2>
+    <p>This Addendum is effective as of <strong>March 9, 2026</strong> and applies through <strong>May 31, 2026</strong>, after which the BDR will transition to the standard commission plan without offsets, subject to ongoing employment and performance expectations.</p>
+    <h2>3. Commission Offset During Ramp Period</h2>
+    <p style="margin-bottom:10px;">To support onboarding and role readiness, Armor will provide a temporary commission offset during the ramp period as outlined below:</p>
+    <table class="commission-table">
+      <thead><tr><th>Month</th><th>Period</th><th>Commission Offset</th></tr></thead>
+      <tbody>
+        <tr><td><strong>March</strong></td><td>Mar 9 - Mar 31, 2026</td><td><strong>100%</strong> (prorated from start date)</td></tr>
+        <tr><td><strong>April</strong></td><td>Apr 1 - Apr 30, 2026</td><td><strong>50%</strong></td></tr>
+        <tr><td><strong>May</strong></td><td>May 1 - May 31, 2026</td><td><strong>25%</strong></td></tr>
+        <tr><td>June and Beyond</td><td>Jun 1, 2026+</td><td>0% (standard plan)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:10px;">Commission offsets are contingent upon satisfactory completion of the Management by Objectives defined in this Addendum. Effective June 1, 2026, Chelsea will transition to the standard commission plan as stated in the offer letter.</p>
+  </div>
+</div>
+
+<!-- MBOs -->
+<div id="section-mbos" class="section">
+  <div class="card">
+    <h2>4. Management by Objectives (MBOs)</h2>
+    <p style="margin-bottom:12px;">The following MBOs define expected activities, deliverables, and performance milestones during the three-month ramp period. Completion will be assessed by the Director of Sales. The employee is expected to be fully operational and performing all duties independently by <strong>June 1, 2026</strong>.</p>
+    <h3>Month 1: March 2026 &mdash; Onboarding, Foundational Enablement &amp; Initial Execution</h3>
+    <h4>Objectives</h4>
+    <ul>
+      <li>Complete all HR onboarding, security awareness, and required compliance training</li>
+      <li>Gain working knowledge of Armor's go-to-market motion, ICPs, buyer personas, and sales process</li>
+      <li>Complete systems and tools training, including HubSpot CRM and sales engagement platforms</li>
+      <li>Develop baseline Armor product knowledge, including MDR, SOC, SIEM, and AEC</li>
+      <li>Participate in cross-functional shadowing sessions with Sales and Customer Success</li>
+      <li>Draft initial target prospect list and outbound prospecting plan</li>
+      <li>Enroll in and complete The Complete Certified in Cybersecurity (CC) course (ISC2 2025)</li>
+      <li>Complete knowledge and awareness training for PCI DSS and HIPAA compliance frameworks</li>
+      <li>Begin developing persona-specific outbound messaging</li>
+      <li>Complete AI Training Program Module 1 (AI Fundamentals) and Module 2 (Responsible AI Use &amp; Governance)</li>
+    </ul>
+    <h4>Month 1 Completion Criteria</h4>
+    <ul>
+      <li>All onboarding and training modules completed, including the ISC2 cybersecurity course</li>
+      <li>Systems access validated and functional across all required platforms</li>
+      <li>Target prospect list and outbound prospecting plan reviewed and approved by management</li>
+      <li>Prospecting plan reviewed with Head of Marketing</li>
+      <li>PCI DSS and HIPAA knowledge validation completed</li>
+      <li>Demonstrated understanding of compliance-driven buyer pain points and appropriate sales positioning</li>
+      <li>AI Foundation Modules 1 and 2 completed</li>
+    </ul>
+    <h3>Month 2: April 2026 &mdash; Messaging Development, Compliance Depth &amp; Production Ramp</h3>
+    <h4>Objectives</h4>
+    <ul>
+      <li>Complete knowledge and awareness training for HITRUST CSF, ISO 27001, and SOC 2 (Type I and Type II)</li>
+      <li>Demonstrate ability to position Armor's services in support of compliance readiness and operational security</li>
+      <li>Create refined ICP-based prospect lists with persona-specific outbound messaging</li>
+      <li>Build and deploy prospect sequences in HubSpot; collaborate with Marketing to refine messaging and campaign alignment</li>
+      <li>Participate in role play sessions focused on discovery and objection handling; achieve mastery-level performance</li>
+      <li>Increase outbound prospecting activity to approximately 50-75% of full capacity</li>
+      <li>Generate qualified meetings aligned to ICP and compliance-driven use cases</li>
+      <li>Attend a minimum of two local networking or industry events</li>
+      <li>Complete AI Training Program: Module 3 (Prompt Engineering Basics), Module 8 (AI for Sales &amp; Marketing), and Module 9 (Critical Oversight &amp; Hallucination Detection)</li>
+      <li>Apply AI tools (Claude) to prospecting workflows, messaging development, and lead research</li>
+    </ul>
+    <h4>Month 2 Completion Criteria</h4>
+    <ul>
+      <li>HITRUST, ISO 27001, and SOC 2 knowledge validation completed</li>
+      <li>Approved messaging and sequences deployed in HubSpot</li>
+      <li>Outbound activity recorded at targeted capacity (50-75%)</li>
+      <li>Role play mastery confirmed by management</li>
+      <li>Qualified meetings created and documented in CRM</li>
+      <li>Networking event participation documented in CRM</li>
+      <li>AI Training Program Sales &amp; Marketing track complete (Modules 1, 2, 3, 8, 9) with passing assessment scores (80% minimum)</li>
+    </ul>
+    <h3>Month 3: May 2026 &mdash; Full Productivity &amp; Performance Optimization</h3>
+    <h4>Objectives</h4>
+    <ul>
+      <li>Operate at 100% outbound prospecting capacity</li>
+      <li>Independently manage prospecting, sequencing, and follow-up activities with minimal coaching</li>
+      <li>Consistently deliver high-quality, well-qualified meetings to Account Executives</li>
+      <li>Analyze individual performance metrics and refine targeting and messaging as needed</li>
+      <li>Attend a minimum of two local networking or industry events</li>
+      <li>Demonstrate full readiness to transition to the standard commission plan effective June 1, 2026</li>
+      <li>Complete AI Training Program bonus module: Mastering Claude (strongly suggested)</li>
+      <li>Leverage Claude and AI tools across daily prospecting, research, and communication workflows</li>
+    </ul>
+    <h4>Month 3 Completion Criteria</h4>
+    <ul>
+      <li>Full outbound capacity achieved and sustained throughout the month</li>
+      <li>Consistent meeting quality and volume meeting or exceeding established benchmarks</li>
+      <li>Minimal coaching intervention required for day-to-day execution</li>
+      <li>Management approval for transition to full commission plan participation</li>
+      <li>Mastering Claude bonus module completed (strongly suggested)</li>
+      <li>Demonstrated proficiency using AI tools in day-to-day sales workflows</li>
+    </ul>
+    <h2>5. Evaluation and Administration</h2>
+    <ul>
+      <li>MBO progress will be reviewed monthly by the Director of Sales, with weekly check-ins during the ramp period.</li>
+      <li>Failure to make reasonable progress toward MBO completion may result in modification or removal of commission offsets at the Company's discretion.</li>
+      <li>Armor reserves the right to amend or terminate this Addendum at any time, with or without notice, in accordance with applicable law.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- TRACKER -->
+<div id="section-tracker" class="section">
+  <div class="card" style="padding:20px 24px;">
+    <div class="title-block" style="margin-bottom:14px;">
+      <div class="gold-rule"></div>
+      <div class="doc-type" style="font-size:14pt;">3-Month Ramp-Up Tracker</div>
+      <div class="role-line">Chelsea Rosebrook | BDR | March - May 2026</div>
+    </div>
+    <p style="margin-bottom:6px;">Use <strong style="color:#155724;">C</strong> = Complete, <strong style="color:#856404;">I</strong> = Incomplete, <strong style="color:#721c24;">B</strong> = Blocked. Click the comment bubble to add notes per task.</p>
+    <div class="progress-summary" id="progressSummary"></div>
+    <div class="month-header"><h3 style="margin:0;">Month 1: March 2026</h3><span class="month-badge">Commission Offset: 100%</span></div>
+    <div id="weeks-container"></div>
+    <div id="review-1" class="review-bar"></div>
+    <div class="month-header" style="margin-top:20px;"><h3 style="margin:0;">Month 2: April 2026</h3><span class="month-badge">Commission Offset: 50%</span></div>
+    <div id="weeks-container-2"></div>
+    <div id="review-2" class="review-bar"></div>
+    <div class="month-header" style="margin-top:20px;"><h3 style="margin:0;">Month 3: May 2026</h3><span class="month-badge">Commission Offset: 25%</span></div>
+    <div id="weeks-container-3"></div>
+    <div id="review-3" class="review-bar"></div>
+    <div class="transition-box"><strong>Transition to Standard Commission Plan:</strong> Upon successful completion of the 3-month ramp and management approval, Chelsea Rosebrook will transition to the standard BDR commission plan effective June 1, 2026, as outlined in the original offer letter.</div>
+  </div>
+</div>
+
+<!-- SIGNATURES TAB -->
+<div id="section-signatures" class="section">
+  <div class="card">
+    <h2>6. Employee Acknowledgment</h2>
+    <p style="margin-bottom:16px;">I acknowledge that I have read and understand this Compensation and MBO Addendum. I understand that commission offsets are contingent upon satisfactory MBO completion, and that I am expected to be fully operational by June 1, 2026.</p>
+    <div class="sig-block">
+      <div class="sig-row"><span class="sig-label">Employee Name:</span><input class="sig-line" type="text" id="sig-emp-name" oninput="onSigInput()"></div>
+      <div class="sig-hint">Chelsea Rosebrook</div>
+      <div class="sig-row"><span class="sig-label">Signature:</span><input class="sig-line" type="text" id="sig-emp" oninput="onSigInput()"></div>
+      <div class="sig-row"><span class="sig-label">Date:</span><input class="sig-line" type="text" id="sig-emp-date" oninput="onSigInput()"></div>
+    </div>
+    <h2 style="margin-top:28px;">7. Armor Acknowledgment</h2>
+    <div class="sig-block">
+      <div class="sig-row"><span class="sig-label">Name:</span><input class="sig-line" type="text" id="sig-armor-name" oninput="onSigInput()"></div>
+      <div class="sig-row"><span class="sig-label">Title:</span><input class="sig-line" type="text" id="sig-armor-title" oninput="onSigInput()"></div>
+      <div class="sig-row"><span class="sig-label">Signature:</span><input class="sig-line" type="text" id="sig-armor" oninput="onSigInput()"></div>
+      <div class="sig-row"><span class="sig-label">Date:</span><input class="sig-line" type="text" id="sig-armor-date" oninput="onSigInput()"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mainContent -->
+
+<div class="save-bar" id="saveBar" style="display:none;">
+  <span id="saveBarMsg">All changes saved to SharePoint.</span>
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-outline" onclick="printAll()">Print / Save Full PDF</button>
+    <button class="btn btn-gold" onclick="window.print()">Print Current Tab</button>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// CONFIGURATION  --  Filled in via the Setup Guide above
+// =====================================================================
+const CONFIG = {
+  clientId:    '5e8cf057-74ce-4012-a786-9583cef43b0e',
+  tenantId:    'c7fa598c-fbbf-400c-83e9-0f436f3f92af',
+  siteUrl:     'https://armor0.sharepoint.com/sites/CustomerEngagement',
+  redirectUri: 'https://armor0.sharepoint.com/sites/CustomerEngagement/Shared%20Documents/CRosebrook-Onboarding.html',
+  stateFile:   'CRosebrook-Onboarding-State.json'
+};
+// =====================================================================
+
+const EMPLOYEE = 'Chelsea Rosebrook';
+const MANAGER  = 'Chris Murphy';
+const REVIEW_LABELS = {1:'Month 1 Review', 2:'Month 2 Review', 3:'Final Ramp Review'};
+
+const ROLES = [
+  { id:'manager',  label:'Manager',  desc:'Full edit access (Chris Murphy)',        canEdit:true,  canAckMgr:true,  canAckEmp:false },
+  { id:'employee', label:'Employee', desc:'Task tracking + comments (C. Rosebrook)',canEdit:true,  canAckMgr:false, canAckEmp:true  },
+  { id:'hr',       label:'HR',       desc:'Read-only access',                        canEdit:false, canAckMgr:false, canAckEmp:false },
+  { id:'cfo',      label:'CFO',      desc:'Read-only access',                        canEdit:false, canAckMgr:false, canAckEmp:false },
+  { id:'payroll',  label:'Payroll',  desc:'Read-only access',                        canEdit:false, canAckMgr:false, canAckEmp:false },
+  { id:'observer', label:'Observer', desc:'Read-only access',                        canEdit:false, canAckMgr:false, canAckEmp:false },
+];
+
+const WEEKS = [
+  {id:'w1', title:'Week 1: Mar 9 - Mar 13',  month:1, tasks:['Complete HR onboarding and new hire paperwork','Complete security awareness training','Obtain and validate all systems access','Begin go-to-market and ICP/persona orientation']},
+  {id:'w2', title:'Week 2: Mar 16 - Mar 20', month:1, tasks:['Complete HubSpot CRM and sales platform training','Begin product knowledge training (MDR, SOC, SIEM, AEC)','Enroll in ISC2 Certified in Cybersecurity (CC) course','Begin cross-functional shadowing with Sales team','Begin AI Module 1: AI Fundamentals']},
+  {id:'w3', title:'Week 3: Mar 23 - Mar 27', month:1, tasks:['Complete cross-functional shadowing with Customer Success','Draft target prospect list and outbound prospecting plan','Begin PCI DSS and HIPAA compliance awareness training','Continue ISC2 CC coursework','Complete AI Module 2: Responsible AI Use & Governance']},
+  {id:'w4', title:'Week 4: Mar 30 - Apr 3',  month:1, tasks:['Complete ISC2 CC course certification','Complete PCI DSS and HIPAA knowledge validation','Submit prospect list/plan for management approval','Review prospecting plan with Head of Marketing']},
+  {id:'w5', title:'Week 5: Apr 6 - Apr 10',  month:2, tasks:['Begin HITRUST/ISO 27001/SOC 2 compliance training','Refine ICP-based prospect lists','Complete AI Module 3: Prompt Engineering Basics']},
+  {id:'w6', title:'Week 6: Apr 13 - Apr 17', month:2, tasks:['Build and deploy prospect sequences in HubSpot','Begin role play sessions (discovery and objection handling)','Begin AI Module 8: AI for Sales & Marketing']},
+  {id:'w7', title:'Week 7: Apr 20 - Apr 24', month:2, tasks:['Ramp outbound prospecting to 50-75% capacity','Attend networking / industry event #1','Complete AI Module 8: AI for Sales & Marketing']},
+  {id:'w8', title:'Week 8: Apr 27 - May 1',  month:2, tasks:['Complete HITRUST/ISO/SOC 2 compliance validations','Role play mastery confirmed by management','Complete AI Module 9: Critical Oversight & Hallucination Detection']},
+  {id:'w9', title:'Week 9: May 4 - May 8',   month:2, tasks:['Attend networking / industry event #2','Generate qualified meetings; document in CRM','AI Sales & Marketing track assessments passed (80% min)']},
+  {id:'w10',title:'Week 10: May 11 - May 15',month:3, tasks:['Operate at 100% outbound prospecting capacity','Independently manage pipeline and follow-up activities','Begin AI Bonus Module: Mastering Claude (strongly suggested)']},
+  {id:'w11',title:'Week 11: May 18 - May 22',month:3, tasks:['Deliver consistent qualified meetings to Account Executives','Attend networking / industry event #1','Apply AI tools (Claude) to daily prospecting workflows']},
+  {id:'w12',title:'Week 12: May 25 - May 29',month:3, tasks:['Analyze individual performance metrics; refine targeting','Complete Mastering Claude bonus module (strongly suggested)','Demonstrate AI proficiency in daily sales workflows']},
+  {id:'w13',title:'Week 13: Jun 1 - Jun 5',  month:3, tasks:['Attend networking / industry event #2','Final readiness assessment for standard commission plan','Management approval for full commission plan transition']},
+];
+
+let appState = {
+  tasks: {},
+  reviews: {
+    1:{date:'',mgr:MANAGER,emp:EMPLOYEE,attained:'',comments:[],ack:{emp:null,mgr:null},sig:{emp:'',empDate:'',mgr:'',mgrDate:''}},
+    2:{date:'',mgr:MANAGER,emp:EMPLOYEE,attained:'',comments:[],ack:{emp:null,mgr:null},sig:{emp:'',empDate:'',mgr:'',mgrDate:''}},
+    3:{date:'',mgr:MANAGER,emp:EMPLOYEE,attained:'',comments:[],ack:{emp:null,mgr:null},sig:{emp:'',empDate:'',mgr:'',mgrDate:''}},
+  },
+  sigs:{empName:'',emp:'',empDate:'',armorName:'',armorTitle:'',armor:'',armorDate:''}
+};
+
+let msalInst=null, currentAccount=null, currentRole=null, spDriveId=null, saveTimer=null, activeComment=null;
+
+// ===== CONFIG =====
+function configReady(){ return !!(CONFIG.clientId && CONFIG.tenantId && CONFIG.siteUrl && CONFIG.redirectUri); }
+
+function applyConfig(){
+  CONFIG.clientId    = document.getElementById('cfg-clientId').value.trim();
+  CONFIG.tenantId    = document.getElementById('cfg-tenantId').value.trim();
+  CONFIG.siteUrl     = document.getElementById('cfg-siteUrl').value.trim();
+  CONFIG.redirectUri = document.getElementById('cfg-redirectUri').value.trim();
+  if(!CONFIG.clientId||!CONFIG.tenantId||!CONFIG.siteUrl||!CONFIG.redirectUri){
+    alert('Please fill in all four fields before applying.'); return;
+  }
+  const src = document.documentElement.outerHTML
+    .replace(`clientId:    '',`, `clientId:    '${CONFIG.clientId}',`)
+    .replace(`tenantId:    '',`, `tenantId:    '${CONFIG.tenantId}',`)
+    .replace(`siteUrl:     '',`, `siteUrl:     '${CONFIG.siteUrl}',`)
+    .replace(`redirectUri: '',`, `redirectUri: '${CONFIG.redirectUri}',`);
+  const blob = new Blob([src], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'CRosebrook-Onboarding.html';
+  a.click();
+  const st = document.getElementById('cfgStatus');
+  st.style.display='block';
+  st.textContent = 'Updated file downloaded. Upload it to SharePoint to replace this file, then open it from SharePoint to sign in.';
+}
+
+// ===== MSAL =====
+function initMSAL(){
+  msalInst = new msal.PublicClientApplication({
+    auth:{ clientId:CONFIG.clientId, authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`, redirectUri:CONFIG.redirectUri },
+    cache:{ cacheLocation:'sessionStorage' }
+  });
+}
+
+async function doLogin(){
+  document.getElementById('authErr').style.display='none';
+  try {
+    const r = await msalInst.loginPopup({ scopes:['User.Read','Files.ReadWrite','Sites.Read.All'] });
+    currentAccount = r.account;
+    showRoleSelect();
+  } catch(e){
+    const el=document.getElementById('authErr'); el.textContent='Sign-in failed: '+(e.message||e); el.style.display='block';
+  }
+}
+
+function doLogout(){
+  msalInst.logoutPopup({account:currentAccount});
+  currentAccount=null; currentRole=null;
+  document.getElementById('authOverlay').style.display='flex';
+  document.getElementById('topNav').style.display='none';
+  document.getElementById('mainContent').style.display='none';
+  document.getElementById('saveBar').style.display='none';
+}
+
+async function getToken(){
+  const sc=['Files.ReadWrite','Sites.Read.All'];
+  try { return (await msalInst.acquireTokenSilent({scopes:sc,account:currentAccount})).accessToken; }
+  catch { return (await msalInst.acquireTokenPopup({scopes:sc,account:currentAccount})).accessToken; }
+}
+
+// ===== ROLE SELECT =====
+function showRoleSelect(){
+  document.getElementById('authOverlay').style.display='none';
+  document.getElementById('roleUserLine').textContent='Signed in as: '+(currentAccount.name||currentAccount.username);
+  const grid=document.getElementById('roleGrid'); grid.innerHTML='';
+  ROLES.forEach(r=>{
+    const btn=document.createElement('button'); btn.className='role-btn';
+    btn.innerHTML=`<div class="rb-title">${r.label}</div><div class="rb-desc">${r.desc}</div>`;
+    btn.onclick=()=>{ grid.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); currentRole=r; document.getElementById('roleConfirmBtn').disabled=false; };
+    grid.appendChild(btn);
+  });
+  document.getElementById('roleOverlay').classList.add('show');
+}
+
+async function confirmRole(){
+  document.getElementById('roleOverlay').classList.remove('show');
+  await initApp();
+}
+
+// ===== SHAREPOINT =====
+async function resolveDrive(){
+  const tok=await getToken();
+  const u=new URL(CONFIG.siteUrl);
+  const site=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${u.hostname}:${u.pathname}`,{headers:{Authorization:'Bearer '+tok}})).json();
+  const drives=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:{Authorization:'Bearer '+tok}})).json();
+  spDriveId=drives.value[0].id;
+}
+
+async function loadState(){
+  try {
+    const tok=await getToken();
+    const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${spDriveId}/root:/${CONFIG.stateFile}:/content`,{headers:{Authorization:'Bearer '+tok}});
+    if(r.status===404) return;
+    const d=await r.json();
+    if(d.tasks) appState.tasks=d.tasks;
+    if(d.reviews)[1,2,3].forEach(m=>{ if(d.reviews[m]) Object.assign(appState.reviews[m],d.reviews[m]); });
+    if(d.sigs) Object.assign(appState.sigs,d.sigs);
+  } catch(e){ console.warn('Load state:',e); }
+}
+
+async function saveState(){
+  if(!currentRole||!currentRole.canEdit) return;
+  setSaveIndicator('Saving...');
+  try {
+    const tok=await getToken();
+    const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${spDriveId}/root:/${CONFIG.stateFile}:/content`,{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(appState)});
+    if(!r.ok) throw new Error(r.status);
+    setSaveIndicator('Saved to SharePoint \u2713');
+    setTimeout(()=>setSaveIndicator(''),3000);
+  } catch(e){ setSaveIndicator('Save failed'); console.error(e); }
+}
+
+function scheduleSave(){ if(!currentRole||!currentRole.canEdit) return; clearTimeout(saveTimer); saveTimer=setTimeout(saveState,1500); }
+function setSaveIndicator(msg){ const e=document.getElementById('saveIndicator'); if(e) e.textContent=msg; const b=document.getElementById('saveBarMsg'); if(b) b.textContent=msg||'All changes saved to SharePoint.'; }
+
+// ===== INIT APP =====
+async function initApp(){
+  setSaveIndicator('Loading...');
+  try { await resolveDrive(); await loadState(); } catch(e){ console.warn('SP init:',e); }
+  document.getElementById('topNav').style.display='flex';
+  document.getElementById('mainContent').style.display='block';
+  document.getElementById('saveBar').style.display='flex';
+  const name=currentAccount.name||currentAccount.username;
+  document.getElementById('userAvatar').textContent=name.split(' ').map(p=>p[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('userName').textContent=name;
+  document.getElementById('userRoleLabel').textContent=currentRole.label+(currentRole.canEdit?'':' (Read Only)');
+  buildProgressCards(); buildWeeks();
+  [1,2,3].forEach(m=>{ buildReview(m); renderReviewComments(m); renderAckAndSig(m); });
+  WEEKS.forEach(w=>w.tasks.forEach((_,i)=>renderRow(w.id,i)));
+  applyStateToUI(); updateProgress(); applyRolePermissions();
+  setSaveIndicator('');
+}
+
+function applyStateToUI(){
+  const s=appState.sigs;
+  const map={'emp-name':'empName','emp':'emp','emp-date':'empDate','armor-name':'armorName','armor-title':'armorTitle','armor':'armor','armor-date':'armorDate'};
+  Object.entries(map).forEach(([k,sk])=>{ const el=document.getElementById('sig-'+k); if(el) el.value=s[sk]||''; });
+  [1,2,3].forEach(m=>{
+    const rv=appState.reviews[m];
+    ['date','mgr','emp'].forEach(f=>{ const el=document.getElementById(`rev${m}-${f}`); if(el) el.value=rv[f]||''; });
+    const att=document.getElementById(`rev${m}-attained`); if(att) att.value=rv.attained||'';
+    WEEKS.filter(w=>w.month===m).forEach(w=>w.tasks.forEach((_,i)=>{ const ta=document.getElementById(`ctext_${w.id}_t${i}`); if(ta&&appState.tasks[`${w.id}_t${i}`]) ta.value=appState.tasks[`${w.id}_t${i}`].comment||''; }));
+  });
+}
+
+function applyRolePermissions(){
+  const canEdit=currentRole&&currentRole.canEdit;
+  const isMgr=currentRole&&currentRole.id==='manager';
+  const isEmp=currentRole&&currentRole.id==='employee';
+  WEEKS.forEach(w=>w.tasks.forEach((_,i)=>{
+    ['C','I','B'].forEach(v=>{ const b=document.getElementById(`btn_${w.id}_t${i}_${v}`); if(b) b.disabled=!canEdit; });
+    const ta=document.getElementById(`ctext_${w.id}_t${i}`); if(ta) ta.disabled=!canEdit;
+  }));
+  [1,2,3].forEach(m=>{
+    ['date','mgr','emp'].forEach(f=>{ const el=document.getElementById(`rev${m}-${f}`); if(el) el.disabled=!isMgr; });
+    const att=document.getElementById(`rev${m}-attained`); if(att) att.disabled=!isMgr;
+    const ta=document.getElementById(`rc-ta-${m}`); if(ta) ta.disabled=!canEdit;
+    const btn=document.getElementById(`rcadd-${m}`); if(btn) btn.disabled=!canEdit;
+    const sel=document.getElementById(`rc-who-${m}`); if(sel&&isEmp){ sel.value='emp'; sel.disabled=true; }
+    ['emp','mgr'].forEach(role=>{
+      const sigEl=document.getElementById(`rsig-${m}-${role}`);
+      const dateEl=document.getElementById(`rsig-${m}-${role}Date`);
+      const canEditSig=(role==='emp'&&isEmp)||(role==='mgr'&&isMgr);
+      if(sigEl&&!appState.reviews[m].ack[role]) sigEl.disabled=!canEditSig;
+      if(dateEl&&!appState.reviews[m].ack[role]) dateEl.disabled=!canEditSig;
+    });
+  });
+  ['sig-emp-name','sig-emp','sig-emp-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!isEmp; });
+  ['sig-armor-name','sig-armor-title','sig-armor','sig-armor-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!isMgr; });
+  if(!canEdit){ const p=document.getElementById('userPill'); if(p&&!p.querySelector('.read-only-badge')) p.insertAdjacentHTML('beforeend','<span class="read-only-badge">READ ONLY</span>'); }
+}
+
+// ===== TASKS =====
+function ts(k){ return appState.tasks[k]||(appState.tasks[k]={}), appState.tasks[k]; }
+
+function setStatus(wid,i,val){
+  if(!currentRole||!currentRole.canEdit) return;
+  const k=`${wid}_t${i}`; ts(k).status=ts(k).status===val?'':val;
+  renderRow(wid,i); updateProgress(); scheduleSave();
+}
+function renderRow(wid,i){
+  const k=`${wid}_t${i}`, val=ts(k).status||'';
+  ['C','I','B'].forEach(v=>{ const b=document.getElementById(`btn_${wid}_t${i}_${v}`); if(b){ b.className='status-btn'+(val===v?` active-${v}`:''); if(!currentRole||!currentRole.canEdit) b.disabled=true; } });
+  const ic=document.getElementById(`cicon_${wid}_t${i}`); if(ic){ const h=!!(ts(k).comment||'').trim(); ic.className='comment-icon'+(h?' has-comment':''); }
+}
+function toggleComment(wid,i){
+  const id=`cbox_${wid}_t${i}`, box=document.getElementById(id); if(!box) return;
+  const isOpen=box.classList.contains('open');
+  if(activeComment&&activeComment!==id){ const p=document.getElementById(activeComment); if(p) p.classList.remove('open'); }
+  if(isOpen){ box.classList.remove('open'); activeComment=null; }
+  else { box.classList.add('open'); activeComment=id; setTimeout(()=>{ const ta=document.getElementById(`ctext_${wid}_t${i}`); if(ta&&!ta.disabled) ta.focus(); },50); }
+}
+function onCommentInput(wid,i){
+  if(!currentRole||!currentRole.canEdit) return;
+  const ta=document.getElementById(`ctext_${wid}_t${i}`); if(ta){ ts(`${wid}_t${i}`).comment=ta.value; renderRow(wid,i); scheduleSave(); }
+}
+
+// ===== REVIEW FIELDS =====
+function saveRevField(m){
+  const rv=appState.reviews[m];
+  ['date','mgr','emp'].forEach(f=>{ const el=document.getElementById(`rev${m}-${f}`); if(el) rv[f]=el.value; });
+  const att=document.getElementById(`rev${m}-attained`); if(att) rv.attained=att.value;
+  scheduleSave();
+}
+function toggleReviewComments(m){
+  const t=document.getElementById(`rct-${m}`), p=document.getElementById(`rcp-${m}`); if(!t||!p) return;
+  const open=p.classList.contains('open'); t.classList.toggle('open',!open); p.classList.toggle('open',!open);
+}
+function addReviewComment(m){
+  if(!currentRole||!currentRole.canEdit) return;
+  const sel=document.getElementById(`rc-who-${m}`), ta=document.getElementById(`rc-ta-${m}`); if(!sel||!ta) return;
+  const text=(ta.value||'').trim(); if(!text) return;
+  appState.reviews[m].comments.push({id:Date.now(),who:sel.value,text,date:fmtDate(new Date())});
+  ta.value=''; renderReviewComments(m); scheduleSave();
+}
+function deleteReviewComment(m,id){
+  if(!currentRole||!currentRole.canEdit) return;
+  appState.reviews[m].comments=appState.reviews[m].comments.filter(c=>c.id!==id); renderReviewComments(m); scheduleSave();
+}
+function renderReviewComments(m){
+  const cont=document.getElementById(`rc-entries-${m}`); if(!cont) return;
+  const entries=appState.reviews[m].comments||[];
+  const canDel=currentRole&&currentRole.canEdit;
+  cont.innerHTML=entries.length===0
+    ?'<div style="font-size:9.5pt;color:var(--cobalt);font-style:italic;">No comments yet.</div>'
+    :entries.map(e=>`<div class="rc-entry"><div class="rc-entry-meta"><span class="rc-entry-author ${e.who==='mgr'?'manager':'employee'}">${e.who==='mgr'?MANAGER:EMPLOYEE}</span><span class="rc-entry-date">${e.date}</span>${canDel?`<button class="rc-entry-delete" onclick="deleteReviewComment(${m},${e.id})">&#x2715;</button>`:''}</div><div class="rc-entry-text">${escHtml(e.text)}</div></div>`).join('');
+}
+
+// ===== ACK + SIG =====
+function acknowledge(m,role){
+  const canAck=currentRole&&((role==='emp'&&currentRole.canAckEmp)||(role==='mgr'&&currentRole.canAckMgr));
+  if(!canAck) return;
+  appState.reviews[m].ack[role]=fmtDate(new Date());
+  appState.reviews[m].sig[role]='Electronically Acknowledged';
+  appState.reviews[m].sig[role+'Date']='';
+  renderAckAndSig(m); scheduleSave();
+}
+function clearAck(m,role){
+  if(!currentRole||(role==='emp'&&!currentRole.canAckEmp)||(role==='mgr'&&!currentRole.canAckMgr)) return;
+  appState.reviews[m].ack[role]=null;
+  appState.reviews[m].sig[role]=''; appState.reviews[m].sig[role+'Date']='';
+  renderAckAndSig(m); scheduleSave();
+}
+function onRevSigInput(m,field){
+  const el=document.getElementById(`rsig-${m}-${field}`); if(el) appState.reviews[m].sig[field]=el.value; scheduleSave();
+}
+function renderAckAndSig(m){
+  const rv=appState.reviews[m];
+  const empCanAck=currentRole&&currentRole.canAckEmp;
+  const mgrCanAck=currentRole&&currentRole.canAckMgr;
+  [['emp',EMPLOYEE,empCanAck],['mgr',MANAGER,mgrCanAck]].forEach(([role,name,canAck])=>{
+    const stamp=rv.ack[role];
+    const btn=document.getElementById(`ack-${role}-btn-${m}`);
+    const stampEl=document.getElementById(`ack-${role}-stamp-${m}`);
+    const clearEl=document.getElementById(`ack-${role}-clear-${m}`);
+    if(btn){ btn.textContent=stamp?'Acknowledged':'Acknowledge'; btn.className='ack-btn'+(stamp?' acknowledged':''); btn.disabled=!!stamp||!canAck; }
+    if(stampEl) stampEl.textContent=stamp?'Acknowledged: '+stamp:'';
+    if(clearEl) clearEl.style.display=(stamp&&canAck)?'inline':'none';
+    const sigEl=document.getElementById(`rsig-${m}-${role}`);
+    const dateRow=document.getElementById(`rsig-${m}-${role}DateRow`);
+    const dateEl=document.getElementById(`rsig-${m}-${role}Date`);
+    if(sigEl){ sigEl.value=rv.sig[role]||''; sigEl.readOnly=!!stamp; sigEl.className='rev-sig-input'+(stamp?' e-acked':''); }
+    if(dateEl){ dateEl.value=stamp?'':rv.sig[role+'Date']||''; dateEl.readOnly=!!stamp; }
+    if(dateRow) dateRow.style.visibility=stamp?'hidden':'visible';
+  });
+}
+
+// ===== SIGNATURES TAB =====
+function onSigInput(){
+  const s=appState.sigs;
+  const map={'emp-name':'empName','emp':'emp','emp-date':'empDate','armor-name':'armorName','armor-title':'armorTitle','armor':'armor','armor-date':'armorDate'};
+  Object.entries(map).forEach(([k,sk])=>{ const el=document.getElementById('sig-'+k); if(el) s[sk]=el.value; });
+  scheduleSave();
+}
+
+// ===== BUILD UI =====
+function buildReview(m){
+  const el=document.getElementById(`review-${m}`); if(!el) return;
+  el.innerHTML=`
+    <div class="review-bar-header"><strong>${REVIEW_LABELS[m]}</strong><span class="review-pct-badge" id="rev${m}-pct">Task Completion: &mdash;</span></div>
+    <div class="review-fields-row">
+      <div class="review-field"><label>Date</label><input type="date" id="rev${m}-date" oninput="saveRevField(${m})"></div>
+      <div class="review-field"><label>Manager</label><input type="text" id="rev${m}-mgr" value="${MANAGER}" oninput="saveRevField(${m})"></div>
+      <div class="review-field"><label>Employee</label><input type="text" id="rev${m}-emp" value="${EMPLOYEE}" oninput="saveRevField(${m})"></div>
+      <div class="attained-field"><label>Attained Ramp %</label><div class="attained-input-wrap"><input type="number" min="0" max="100" id="rev${m}-attained" class="attained-input" placeholder="0" oninput="saveRevField(${m})"><span class="attained-pct-label">%</span></div><div class="attained-note">Manager assessment</div></div>
+    </div>
+    <div class="review-comment-toggle" id="rct-${m}" onclick="toggleReviewComments(${m})"><span class="arrow">&#9654;</span> Review Comments</div>
+    <div class="review-comment-panel" id="rcp-${m}">
+      <div class="rc-toolbar"><label>Add as:</label><select id="rc-who-${m}"><option value="emp">Employee &mdash; ${EMPLOYEE}</option><option value="mgr">Manager &mdash; ${MANAGER}</option></select><input type="text" class="rc-date-display" readonly value="${fmtDate(new Date())}"><button class="rc-add-btn" id="rcadd-${m}" onclick="addReviewComment(${m})">Add Comment</button></div>
+      <textarea id="rc-ta-${m}" style="width:100%;border:1px solid var(--secondary);border-radius:3px;padding:8px;font-family:'Inter',sans-serif;font-size:10.5pt;min-height:60px;resize:vertical;outline:none;margin-bottom:10px;" placeholder="Enter your review comment here..."></textarea>
+      <div class="rc-entries" id="rc-entries-${m}"></div>
+    </div>
+    <div class="ack-section">
+      <div class="ack-section-title">Month-End Acknowledgment &amp; Signature</div>
+      <div class="ack-section-note">&#9432; Use the <strong>Acknowledge</strong> button below, or sign the signature block manually. Both options are accepted. Using the Acknowledge button will populate the signature line electronically and remove the date field.</div>
+      <div class="ack-sig-grid">
+        <div class="ack-sig-col">
+          <div class="col-label">Employee</div>
+          <div class="ack-name-display">${EMPLOYEE}</div>
+          <button id="ack-emp-btn-${m}" class="ack-btn" onclick="acknowledge(${m},'emp')">Acknowledge</button>
+          <div id="ack-emp-stamp-${m}" class="ack-stamp"></div>
+          <span id="ack-emp-clear-${m}" class="ack-clear" onclick="clearAck(${m},'emp')">Clear acknowledgment</span>
+          <div class="rev-sig-block">
+            <div class="rev-sig-row"><span class="rev-sig-label">Signature:</span><input type="text" id="rsig-${m}-emp" class="rev-sig-input" placeholder="Type or acknowledge above" oninput="onRevSigInput(${m},'emp')"></div>
+            <div class="rev-sig-row" id="rsig-${m}-empDateRow"><span class="rev-sig-label">Date:</span><input type="text" id="rsig-${m}-empDate" class="rev-sig-input" placeholder="MM/DD/YYYY" oninput="onRevSigInput(${m},'empDate')"></div>
+          </div>
+        </div>
+        <div class="ack-sig-col">
+          <div class="col-label">Manager</div>
+          <div class="ack-name-display">${MANAGER}</div>
+          <button id="ack-mgr-btn-${m}" class="ack-btn" onclick="acknowledge(${m},'mgr')">Acknowledge</button>
+          <div id="ack-mgr-stamp-${m}" class="ack-stamp"></div>
+          <span id="ack-mgr-clear-${m}" class="ack-clear" onclick="clearAck(${m},'mgr')">Clear acknowledgment</span>
+          <div class="rev-sig-block">
+            <div class="rev-sig-row"><span class="rev-sig-label">Signature:</span><input type="text" id="rsig-${m}-mgr" class="rev-sig-input" placeholder="Type or acknowledge above" oninput="onRevSigInput(${m},'mgr')"></div>
+            <div class="rev-sig-row" id="rsig-${m}-mgrDateRow"><span class="rev-sig-label">Date:</span><input type="text" id="rsig-${m}-mgrDate" class="rev-sig-input" placeholder="MM/DD/YYYY" oninput="onRevSigInput(${m},'mgrDate')"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildWeeks(){
+  const containers={1:'weeks-container',2:'weeks-container-2',3:'weeks-container-3'};
+  [1,2,3].forEach(m=>{
+    const cont=document.getElementById(containers[m]); if(!cont) return;
+    WEEKS.filter(w=>w.month===m).forEach(w=>{
+      const wrap=document.createElement('div'); wrap.className='week-block';
+      let html=`<div class="week-title">${w.title}</div><div class="col-head"><div class="status-heads"><span class="sh">C</span><span class="sh">I</span><span class="sh">B</span></div><span>Task / Milestone</span><span style="text-align:center;">Note</span></div>`;
+      w.tasks.forEach((task,i)=>{
+        html+=`<div class="tracker-row-wrap"><div class="tracker-row"><div class="status-btns"><button id="btn_${w.id}_t${i}_C" class="status-btn" onclick="setStatus('${w.id}',${i},'C')">C</button><button id="btn_${w.id}_t${i}_I" class="status-btn" onclick="setStatus('${w.id}',${i},'I')">I</button><button id="btn_${w.id}_t${i}_B" class="status-btn" onclick="setStatus('${w.id}',${i},'B')">B</button></div><span class="task-label">${task}</span><button id="cicon_${w.id}_t${i}" class="comment-icon" onclick="toggleComment('${w.id}',${i})">&#x1F4AC;</button></div><div class="comment-box" id="cbox_${w.id}_t${i}"><textarea id="ctext_${w.id}_t${i}" placeholder="Add a comment for this task..." oninput="onCommentInput('${w.id}',${i})"></textarea></div></div>`;
+      });
+      wrap.innerHTML=html; cont.appendChild(wrap);
+    });
+  });
+}
+
+function buildProgressCards(){
+  const cont=document.getElementById('progressSummary'); if(!cont) return;
+  ['March 2026','April 2026','May 2026'].forEach((label,idx)=>{
+    const m=idx+1, card=document.createElement('div');
+    card.className='prog-card'; card.id=`prog-m${m}`;
+    card.innerHTML=`<div class="month-label">Month ${m}: ${label}</div><div class="prog-pct">0%</div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:0%"></div></div><div class="prog-count">0 of 0 tasks complete</div>`;
+    cont.appendChild(card);
+  });
+}
+
+function updateProgress(){
+  [1,2,3].forEach(m=>{
+    const keys=WEEKS.filter(w=>w.month===m).flatMap(w=>w.tasks.map((_,i)=>({wid:w.id,i})));
+    const total=keys.length, done=keys.filter(({wid,i})=>(ts(`${wid}_t${i}`).status||'')==='C').length;
+    const pct=total?Math.round(done/total*100):0;
+    const card=document.getElementById(`prog-m${m}`);
+    if(card){ card.querySelector('.prog-pct').textContent=pct+'%'; card.querySelector('.prog-bar-fill').style.width=pct+'%'; card.querySelector('.prog-count').textContent=`${done} of ${total} tasks complete`; }
+    const badge=document.getElementById(`rev${m}-pct`); if(badge) badge.textContent=`Task Completion: ${pct}%`;
+  });
+}
+
+function fmtDate(d){ return d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showSection(name,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+function printAll(){
+  document.querySelectorAll('.section').forEach(s=>s.classList.add('active'));
+  window.print();
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-overview').classList.add('active');
+}
+
+// ===== STARTUP =====
+if(!configReady()){
+  document.getElementById('authOverlay').style.display='none';
+  document.getElementById('setupGuide').style.display='block';
+} else {
+  initMSAL();
+}
+</script>
+</body>
+</html>
