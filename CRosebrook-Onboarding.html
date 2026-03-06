@@ -5,9 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BDR Compensation & MBO Addendum - Chelsea Rosebrook</title>
 <script>
-function loadScript(src, cb){
-  const s=document.createElement('script'); s.src=src; s.onload=cb;
-  s.onerror=()=>{ document.getElementById('authErr').textContent='Failed to load Microsoft auth library. Check your internet connection.'; document.getElementById('authErr').style.display='block'; };
+function loadScript(src, cb, fallbackSrc){
+  const s=document.createElement('script'); s.src=src;
+  s.onload=cb;
+  s.onerror=()=>{
+    if(fallbackSrc){
+      console.warn('Primary MSAL CDN failed, trying fallback...');
+      loadScript(fallbackSrc, cb, null);
+    } else {
+      document.getElementById('authErr').textContent='Failed to load Microsoft auth library. Please try refreshing the page.';
+      document.getElementById('authErr').style.display='block';
+    }
+  };
   document.head.appendChild(s);
 }
 </script>
@@ -907,9 +916,11 @@ window.addEventListener('DOMContentLoaded', function(){
     document.getElementById('authOverlay').style.display='none';
     document.getElementById('setupGuide').style.display='block';
   } else {
-    loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', function(){
-      try { initMSAL(); } catch(e){ console.error('MSAL init failed:', e); }
-    });
+    loadScript(
+      'https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js',
+      function(){ try { initMSAL(); } catch(e){ console.error('MSAL init failed:', e); } },
+      'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.35.0/lib/msal-browser.min.js'
+    );
   }
 });
 </script>
