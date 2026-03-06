@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BDR Compensation & MBO Addendum - Chelsea Rosebrook</title>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+function loadScript(src, cb){
+  const s=document.createElement('script'); s.src=src; s.onload=cb;
+  s.onerror=()=>{ document.getElementById('authErr').textContent='Failed to load Microsoft auth library. Check your internet connection.'; document.getElementById('authErr').style.display='block'; };
+  document.head.appendChild(s);
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -901,7 +907,9 @@ window.addEventListener('DOMContentLoaded', function(){
     document.getElementById('authOverlay').style.display='none';
     document.getElementById('setupGuide').style.display='block';
   } else {
-    try { initMSAL(); } catch(e){ console.error('MSAL init failed:', e); }
+    loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', function(){
+      try { initMSAL(); } catch(e){ console.error('MSAL init failed:', e); }
+    });
   }
 });
 </script>
