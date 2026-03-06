@@ -491,7 +491,7 @@ const CONFIG = {
   clientId:    '5e8cf057-74ce-4012-a786-9583cef43b0e',
   tenantId:    'c7fa598c-fbbf-400c-83e9-0f436f3f92af',
   siteUrl:     'https://armor0.sharepoint.com/sites/CustomerEngagement',
-  redirectUri: 'https://chris-murphy-armor.github.io/armor-onboarding/CRosebrook-Onboarding.html',
+  redirectUri: 'https://armor0.sharepoint.com/sites/CustomerEngagement/Shared%20Documents/CRosebrook-Onboarding.html',
   stateFile:   'CRosebrook-Onboarding-State.json'
 };
 // =====================================================================
@@ -508,6 +508,20 @@ const ROLES = [
   { id:'payroll',  label:'Payroll',  desc:'Read-only access',                        canEdit:false, canAckMgr:false, canAckEmp:false },
   { id:'observer', label:'Observer', desc:'Read-only access',                        canEdit:false, canAckMgr:false, canAckEmp:false },
 ];
+
+// =====================================================================
+// EMAIL TO ROLE MAP  --  Update these with real Armor email addresses
+// Anyone not listed gets 'observer' (read-only) access automatically
+// =====================================================================
+const EMAIL_ROLES = {
+  'cmurphy@armor.com':    'manager',
+  'crosebrook@armor.com': 'employee',
+  // Add HR, CFO, Payroll emails below as needed:
+  // 'jane.doe@armor.com':     'hr',
+  // 'john.smith@armor.com':   'cfo',
+  // 'mary.jones@armor.com':   'payroll',
+};
+// =====================================================================
 
 const WEEKS = [
   {id:'w1', title:'Week 1: Mar 9 - Mar 13',  month:1, tasks:['Complete HR onboarding and new hire paperwork','Complete security awareness training','Obtain and validate all systems access','Begin go-to-market and ICP/persona orientation']},
@@ -608,15 +622,10 @@ async function getToken(){
 // ===== ROLE SELECT =====
 function showRoleSelect(){
   document.getElementById('authOverlay').style.display='none';
-  document.getElementById('roleUserLine').textContent='Signed in as: '+(currentAccount.name||currentAccount.username);
-  const grid=document.getElementById('roleGrid'); grid.innerHTML='';
-  ROLES.forEach(r=>{
-    const btn=document.createElement('button'); btn.className='role-btn';
-    btn.innerHTML=`<div class="rb-title">${r.label}</div><div class="rb-desc">${r.desc}</div>`;
-    btn.onclick=()=>{ grid.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); currentRole=r; document.getElementById('roleConfirmBtn').disabled=false; };
-    grid.appendChild(btn);
-  });
-  document.getElementById('roleOverlay').classList.add('show');
+  const email = (currentAccount.username || '').toLowerCase();
+  const roleId = EMAIL_ROLES[email] || 'observer';
+  currentRole = ROLES.find(r => r.id === roleId);
+  confirmRole();
 }
 
 async function confirmRole(){
