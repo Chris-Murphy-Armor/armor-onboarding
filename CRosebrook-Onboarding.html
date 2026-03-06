@@ -896,12 +896,14 @@ function printAll(){
 }
 
 // ===== STARTUP =====
-if(!configReady()){
-  document.getElementById('authOverlay').style.display='none';
-  document.getElementById('setupGuide').style.display='block';
-} else {
-  initMSAL();
-}
+window.addEventListener('DOMContentLoaded', function(){
+  if(!configReady()){
+    document.getElementById('authOverlay').style.display='none';
+    document.getElementById('setupGuide').style.display='block';
+  } else {
+    try { initMSAL(); } catch(e){ console.error('MSAL init failed:', e); }
+  }
+});
 </script>
 </body>
 </html>
