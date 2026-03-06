@@ -573,12 +573,20 @@ function initMSAL(){
 
 async function doLogin(){
   document.getElementById('authErr').style.display='none';
+  console.log('doLogin called. msalInst=', msalInst);
+  if(!msalInst){
+    const el=document.getElementById('authErr');
+    el.textContent='Auth library not ready. Please wait a moment and try again.';
+    el.style.display='block';
+    return;
+  }
   try {
     const r = await msalInst.loginPopup({ scopes:['User.Read','Files.ReadWrite','Sites.Read.All'] });
     currentAccount = r.account;
     showRoleSelect();
   } catch(e){
     const el=document.getElementById('authErr'); el.textContent='Sign-in failed: '+(e.message||e); el.style.display='block';
+    console.error('loginPopup error:', e);
   }
 }
 
@@ -918,7 +926,11 @@ window.addEventListener('DOMContentLoaded', function(){
   } else {
     loadScript(
       'https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js',
-      function(){ try { initMSAL(); } catch(e){ console.error('MSAL init failed:', e); } },
+      function(){
+        console.log('MSAL script loaded. msal object=', typeof msal);
+        try { initMSAL(); console.log('MSAL initialized. msalInst=', msalInst); }
+        catch(e){ console.error('MSAL init failed:', e); }
+      },
       'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.35.0/lib/msal-browser.min.js'
     );
   }
